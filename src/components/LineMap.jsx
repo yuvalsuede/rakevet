@@ -229,6 +229,33 @@ export default function LineMap({ onNavigateToSearch, onNavigateToSchedule }) {
     gestureRef.current.isPinch = false;
   }, []);
 
+  // Mouse drag for desktop
+  const handleMouseDown = useCallback((e) => {
+    if (transform.scale <= 1) return;
+    // Ignore clicks on buttons/stations
+    if (e.target.closest('button') || e.target.closest('circle') || e.target.tagName === 'text') return;
+    e.preventDefault();
+    const g = gestureRef.current;
+    g.isDragging = true;
+    g.lastX = e.clientX;
+    g.lastY = e.clientY;
+    g.startX = transform.x;
+    g.startY = transform.y;
+  }, [transform]);
+
+  const handleMouseMove = useCallback((e) => {
+    const g = gestureRef.current;
+    if (!g.isDragging) return;
+    e.preventDefault();
+    const panX = g.startX + (e.clientX - g.lastX);
+    const panY = g.startY + (e.clientY - g.lastY);
+    setTransform(clampTransform(transform.scale, panX, panY));
+  }, [transform, clampTransform]);
+
+  const handleMouseUp = useCallback(() => {
+    gestureRef.current.isDragging = false;
+  }, []);
+
   const handleZoom = useCallback((delta) => {
     setTransform(prev => clampTransform(prev.scale + delta, prev.x, prev.y));
   }, [clampTransform]);
@@ -260,10 +287,16 @@ export default function LineMap({ onNavigateToSearch, onNavigateToSchedule }) {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
         style={{
           background: WHITE, borderRadius: 16, overflow: 'hidden',
           boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
           touchAction: transform.scale > 1 ? 'none' : 'pan-y', position: 'relative',
+          cursor: transform.scale > 1 ? 'grab' : 'default',
+          userSelect: 'none',
         }}
       >
         {/* Zoom controls */}
