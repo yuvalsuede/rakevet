@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { SearchIcon, ListIcon, XIcon } from './Icons';
 
 const BLUE = '#0B3D91';
@@ -159,6 +159,84 @@ const LEGEND = [
 export default function LineMap({ onNavigateToSearch, onNavigateToSchedule }) {
   const [selectedStation, setSelectedStation] = useState(null);
 
+  // Zoom/pan state
+  const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
+  const containerRef = useRef(null);
+  const gestureRef = useRef({ startDist: 0, startScale: 1, startX: 0, startY: 0, lastX: 0, lastY: 0, isPinch: false });
+
+  const clampTransform = useCallback((s, x, y) => {
+    const scale = Math.min(Math.max(s, 1), 4);
+    // When zoomed in, allow panning but keep map within bounds
+    const maxPan = (scale - 1) * 200;
+    const cx = Math.min(Math.max(x, -maxPan), maxPan);
+    const cy = Math.min(Math.max(y, -maxPan), maxPan);
+    return { scale, x: cx, y: cy };
+  }, []);
+
+  const handleWheel = useCallback((e) => {
+    e.preventDefault();
+    setTransform(prev => {
+      const delta = e.deltaY > 0 ? -0.15 : 0.15;
+      return clampTransform(prev.scale + delta, prev.x, prev.y);
+    });
+  }, [clampTransform]);
+
+  const handleTouchStart = useCallback((e) => {
+    const g = gestureRef.current;
+    if (e.touches.length === 2) {
+      g.isPinch = true;
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      g.startDist = Math.hypot(dx, dy);
+      g.startScale = transform.scale;
+      g.startX = transform.x;
+      g.startY = transform.y;
+      const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      g.lastX = mx;
+      g.lastY = my;
+    } else if (e.touches.length === 1 && transform.scale > 1) {
+      g.isPinch = false;
+      g.lastX = e.touches[0].clientX;
+      g.lastY = e.touches[0].clientY;
+      g.startX = transform.x;
+      g.startY = transform.y;
+    }
+  }, [transform]);
+
+  const handleTouchMove = useCallback((e) => {
+    const g = gestureRef.current;
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      const newScale = g.startScale * (dist / g.startDist);
+      const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const panX = g.startX + (mx - g.lastX);
+      const panY = g.startY + (my - g.lastY);
+      setTransform(clampTransform(newScale, panX, panY));
+    } else if (e.touches.length === 1 && transform.scale > 1 && !g.isPinch) {
+      e.preventDefault();
+      const panX = g.startX + (e.touches[0].clientX - g.lastX);
+      const panY = g.startY + (e.touches[0].clientY - g.lastY);
+      setTransform(clampTransform(transform.scale, panX, panY));
+    }
+  }, [transform, clampTransform]);
+
+  const handleTouchEnd = useCallback(() => {
+    gestureRef.current.isPinch = false;
+  }, []);
+
+  const handleZoom = useCallback((delta) => {
+    setTransform(prev => clampTransform(prev.scale + delta, prev.x, prev.y));
+  }, [clampTransform]);
+
+  const handleReset = useCallback(() => {
+    setTransform({ scale: 1, x: 0, y: 0 });
+  }, []);
+
   return (
     <div style={{ padding: '20px 16px' }}>
       {/* Legend */}
@@ -175,9 +253,52 @@ export default function LineMap({ onNavigateToSearch, onNavigateToSchedule }) {
         ))}
       </div>
 
-      {/* Map SVG */}
-      <div style={{ background: WHITE, borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-        <svg viewBox="10 10 430 790" style={{ width: '100%', height: 'auto' }}>
+      {/* Map container with zoom/pan */}
+      <div
+        ref={containerRef}
+        onWheel={handleWheel}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{
+          background: WHITE, borderRadius: 16, overflow: 'hidden',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+          touchAction: transform.scale > 1 ? 'none' : 'pan-y', position: 'relative',
+        }}
+      >
+        {/* Zoom controls */}
+        <div style={{
+          position: 'absolute', top: 10, left: 10, zIndex: 10,
+          display: 'flex', flexDirection: 'column', gap: 4,
+        }}>
+          <button onClick={() => handleZoom(0.3)} style={{
+            width: 32, height: 32, borderRadius: 8, border: '1px solid #E0E0E0',
+            background: WHITE, fontSize: 18, fontWeight: 700, color: BLUE,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+          }}>+</button>
+          <button onClick={() => handleZoom(-0.3)} style={{
+            width: 32, height: 32, borderRadius: 8, border: '1px solid #E0E0E0',
+            background: WHITE, fontSize: 18, fontWeight: 700, color: BLUE,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+          }}>-</button>
+          {transform.scale > 1 && (
+            <button onClick={handleReset} style={{
+              width: 32, height: 32, borderRadius: 8, border: '1px solid #E0E0E0',
+              background: WHITE, fontSize: 10, fontWeight: 600, color: GRAY_DARK,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+            }}>1:1</button>
+          )}
+        </div>
+
+        <div style={{
+          transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+          transformOrigin: 'center center',
+          transition: gestureRef.current.isPinch ? 'none' : 'transform 0.1s ease-out',
+        }}>
+        <svg viewBox="10 10 430 790" style={{ width: '100%', height: 'auto', display: 'block' }}>
           {/* === Lines (drawn first — behind everything) === */}
 
           {/* Coast line: Nahariya → Beer Sheva → Dimona (main trunk) */}
@@ -268,6 +389,7 @@ export default function LineMap({ onNavigateToSearch, onNavigateToSchedule }) {
             );
           })}
         </svg>
+        </div>
       </div>
 
       {/* Selected station popup */}
