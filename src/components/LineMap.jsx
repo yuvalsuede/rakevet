@@ -75,11 +75,11 @@ const MAP_STATIONS = [
   { id: 'caesarea', name: 'קיסריה-פ"ח', x: 155, y: 260, anchor: 'start', lines: ['coast', 'binyamina-ashkelon'] },
   { id: 'hadera', name: 'חדרה', x: 150, y: 280, anchor: 'start', lines: ['coast', 'binyamina-ashkelon', 'night'] },
   { id: 'netanya', name: 'נתניה', x: 140, y: 310, anchor: 'start', lines: ['coast', 'binyamina-ashkelon', 'night'] },
-  { id: 'betyehoshua', name: 'בית יהושע', x: 135, y: 330, anchor: 'start', lines: ['binyamina-ashkelon'] },
+  { id: 'betyehoshua', name: 'בית יהושע', x: 135, y: 330, anchor: 'start', lines: ['binyamina-ashkelon', 'raanana'] },
 
   // Raanana / East line
-  { id: 'hodsharon', name: 'הוד השרון', x: 255, y: 340, anchor: 'end', lines: ['raanana'] },
-  { id: 'kfarsava', name: 'כפר סבא', x: 270, y: 360, anchor: 'end', lines: ['raanana'] },
+  { id: 'hodsharon', name: 'הוד השרון', x: 255, y: 340, anchor: 'end', lines: ['raanana', 'coast'] },
+  { id: 'kfarsava', name: 'כפר סבא', x: 270, y: 360, anchor: 'end', lines: ['raanana', 'coast'] },
   { id: 'roshaayin', name: 'ראש העין', x: 290, y: 385, anchor: 'end', lines: ['raanana'] },
   { id: 'petahtikva', name: 'פ"ת סגולה', x: 280, y: 408, anchor: 'end', lines: ['raanana'] },
   { id: 'petahtikva_ka', name: 'פ"ת ק. אריה', x: 265, y: 428, anchor: 'end', lines: ['raanana'] },
@@ -353,7 +353,10 @@ export default function LineMap({ onNavigateToSearch, onNavigateToSchedule }) {
           <polyline points="100,465 155,520 115,625 105,655 120,685 140,710 165,735" fill="none" stroke={LC.south} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
 
           {/* Ra'anana / Hod HaSharon → Yavne West (full cross-metro line) */}
-          <polyline points="255,340 270,360 290,385 280,408 265,428 250,448 115,385 110,415 105,440 100,465 72,492 62,512 52,532 45,552 55,575 70,598" fill="none" stroke={LC.raanana} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          {/* North branch: Hod HaSharon joins coast at Beit Yehoshua junction */}
+          <polyline points="135,330 255,340 270,360 290,385 280,408 265,428 250,448" fill="none" stroke={LC.raanana} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          {/* South branch: Bnei Brak → TA → Bat Yam → Yavne West */}
+          <polyline points="250,448 115,385 110,415 105,440 100,465 72,492 62,512 52,532 45,552 55,575 70,598" fill="none" stroke={LC.raanana} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
 
           {/* Nahariya-Modi'in (lime green, all-stops via airport) */}
           <polyline points="180,30 180,65 180,95 180,155 180,175 180,195 170,215 160,240 115,385 110,415 105,440 100,465 200,495 260,515 285,540" fill="none" stroke={LC['nahariya-modiin']} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
