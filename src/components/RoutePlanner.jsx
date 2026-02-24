@@ -75,15 +75,37 @@ export default function RoutePlanner({ initialStation, onStationConsumed }) {
   const sortByDeparture = (arr) =>
     [...arr].sort((a, b) => new Date(a.departureTime) - new Date(b.departureTime));
 
-  // From a sorted raw array, pick 2 closest before pivotDt and 2 closest after pivotDt
+  // Get the transfer-path key for a travel (identifies the route variant)
+  const getPathKey = (t) => {
+    if (t.trains.length === 1) return 'direct';
+    // Key = intermediate transfer station IDs
+    return t.trains.map(tr => tr.destStation).slice(0, -1).join(',');
+  };
+
+  // From a sorted raw array, pick results around pivotDt ensuring route diversity
   const filterAroundPivot = (sortedRaw, pivotDt) => {
-    const before = sortedRaw.filter(t => new Date(t.departureTime) < pivotDt);
-    const after  = sortedRaw.filter(t => new Date(t.departureTime) >= pivotDt);
-    // 2 closest before = last 2 of the "before" list (already sorted ascending)
-    const closestBefore = before.slice(-2);
-    // 2 closest after = first 2 of the "after" list
-    const closestAfter  = after.slice(0, 2);
-    return [...closestBefore, ...closestAfter];
+    // Group by route path (via which transfer stations)
+    const pathGroups = {};
+    sortedRaw.forEach(t => {
+      const key = getPathKey(t);
+      if (!pathGroups[key]) pathGroups[key] = [];
+      pathGroups[key].push(t);
+    });
+
+    const selected = [];
+    const keys = Object.keys(pathGroups);
+
+    // From each path group, pick 1 before + 2 after pivot
+    keys.forEach(key => {
+      const group = pathGroups[key];
+      const before = group.filter(t => new Date(t.departureTime) < pivotDt);
+      const after  = group.filter(t => new Date(t.departureTime) >= pivotDt);
+      if (before.length) selected.push(before[before.length - 1]); // closest before
+      selected.push(...after.slice(0, 2)); // 2 closest after
+    });
+
+    // Sort combined results by departure time
+    return selected.sort((a, b) => new Date(a.departureTime) - new Date(b.departureTime));
   };
 
   const applyScoreAndSort = useCallback((parsed, mode) => {
@@ -193,11 +215,22 @@ export default function RoutePlanner({ initialStation, onStationConsumed }) {
       // The pivot for "earlier" is the current earliest displayed departure time
       const currentEarliestDt = new Date(`${w.earliestDate}T${w.earliestTime}:00`);
 
-      // Pick 2 travels that are earlier than the current earliest
+      // Pick earlier travels ensuring route diversity
       const candidates = rawPoolRef.current.filter(
         t => new Date(t.departureTime) < currentEarliestDt
       );
-      const twoMore = candidates.slice(-2); // 2 closest before current earliest
+      // Group by path and pick 1 from each group (closest to current earliest)
+      const pathGroups = {};
+      candidates.forEach(t => {
+        const key = getPathKey(t);
+        if (!pathGroups[key]) pathGroups[key] = [];
+        pathGroups[key].push(t);
+      });
+      const twoMore = [];
+      Object.values(pathGroups).forEach(group => {
+        twoMore.push(group[group.length - 1]); // closest before from each path
+      });
+      twoMore.sort((a, b) => new Date(a.departureTime) - new Date(b.departureTime));
 
       if (twoMore.length > 0) {
         // Prepend to existing scored travels (strip old scores first so we re-score together)
@@ -237,11 +270,22 @@ export default function RoutePlanner({ initialStation, onStationConsumed }) {
       // The pivot for "later" is the current latest displayed departure time
       const currentLatestDt = new Date(`${w.latestDate}T${w.latestTime}:00`);
 
-      // Pick 2 travels that are later than the current latest
+      // Pick later travels ensuring route diversity
       const candidates = rawPoolRef.current.filter(
         t => new Date(t.departureTime) > currentLatestDt
       );
-      const twoMore = candidates.slice(0, 2); // 2 closest after current latest
+      // Group by path and pick 1 from each group (closest to current latest)
+      const pathGroups = {};
+      candidates.forEach(t => {
+        const key = getPathKey(t);
+        if (!pathGroups[key]) pathGroups[key] = [];
+        pathGroups[key].push(t);
+      });
+      const twoMore = [];
+      Object.values(pathGroups).forEach(group => {
+        twoMore.push(group[0]); // closest after from each path
+      });
+      twoMore.sort((a, b) => new Date(a.departureTime) - new Date(b.departureTime));
 
       if (twoMore.length > 0) {
         // Append to existing scored travels (strip old scores first so we re-score together)
