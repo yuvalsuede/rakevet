@@ -87,43 +87,47 @@ export default function App() {
     { label: 'קווי רכבת', icon: <TrainIcon size={18} color="currentColor" /> },
   ];
 
+  const MAX_W = 640;
+
   return (
     <div dir="rtl" style={{
-      width: '100%', margin: '0 auto', minHeight: '100vh',
+      width: '100%', minHeight: '100vh',
       background: GRAY, fontFamily: "'Segoe UI', 'Arial', sans-serif",
     }}>
       {/* Terms popup */}
       {!termsAccepted && <TermsPopup onAccept={handleAcceptTerms} />}
 
-      {/* Header */}
+      {/* Header — full-width background, centered content */}
       <div style={{ background: `linear-gradient(135deg, ${BLUE_DARK}, ${BLUE})`, padding: '20px 20px 0' }}>
-        <div style={{ paddingBottom: 16 }}>
-          <h1 style={{
-            margin: 0, fontSize: 32, fontWeight: 900, color: WHITE,
-            letterSpacing: -1, fontFamily: "'Arial', sans-serif",
-          }}>
-            רקבת
-          </h1>
-          <p style={{ margin: '2px 0 0', fontSize: 13, color: WHITE + '99' }}>
-            מתכנן נסיעות חכם לרכבת ישראל
-          </p>
-        </div>
+        <div style={{ maxWidth: MAX_W, margin: '0 auto' }}>
+          <div style={{ paddingBottom: 16, textAlign: 'center' }}>
+            <h1 style={{
+              margin: 0, fontSize: 32, fontWeight: 900, color: WHITE,
+              letterSpacing: -1, fontFamily: "'Arial', sans-serif",
+            }}>
+              רקבת
+            </h1>
+            <p style={{ margin: '2px 0 0', fontSize: 13, color: WHITE + '99' }}>
+              מתכנן נסיעות חכם לרכבת ישראל
+            </p>
+          </div>
 
-        <div style={{ display: 'flex', gap: 2 }}>
-          {tabs.map((tab, i) => (
-            <TabBtn
-              key={i}
-              active={activeTab === i}
-              label={tab.label}
-              icon={tab.icon}
-              onClick={() => setActiveTab(i)}
-            />
-          ))}
+          <div style={{ display: 'flex', gap: 2 }}>
+            {tabs.map((tab, i) => (
+              <TabBtn
+                key={i}
+                active={activeTab === i}
+                label={tab.label}
+                icon={tab.icon}
+                onClick={() => setActiveTab(i)}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div style={{ paddingTop: 12 }}>
+      {/* Content — centered with max-width */}
+      <div style={{ maxWidth: MAX_W, margin: '0 auto', paddingTop: 12 }}>
         {activeTab === 0 && <RoutePlanner initialStation={initialStation} onStationConsumed={() => setInitialStation(null)} />}
         {activeTab === 1 && (
           <LineMap
@@ -136,7 +140,7 @@ export default function App() {
       </div>
 
       {/* Footer */}
-      <div style={{ padding: '20px 16px', textAlign: 'center', fontSize: 12, color: GRAY_MED }}>
+      <div style={{ maxWidth: MAX_W, margin: '0 auto', padding: '20px 16px', textAlign: 'center', fontSize: 12, color: GRAY_MED }}>
         <p style={{ margin: '0 0 4px' }}>רקבת — מתכנן נסיעות קוד פתוח לרכבת ישראל</p>
         <p style={{ margin: '0 0 4px' }}>נתונים מתעדכנים ישירות מרכבת ישראל · ללא פרסומות · חינם</p>
         <p style={{ margin: '8px 0 0' }}>
